@@ -2,41 +2,35 @@ const std = @import("std");
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var argsList = std.ArrayList([]const u8).init(std.heap.page_allocator);
-    defer argsList.deinit();
+    var stdin = std.io.getStdIn().reader();
 
-    // CLI
-    var args = std.process.args();
-    while (args.next()) |arg| {
-        try argsList.append(arg);
-    }
+    // Input
+    try stdout.print("> ", .{});
+    const expr = try stdin.readUntilDelimiterAlloc(std.heap.page_allocator, '\n', 4096);
 
-    if (argsList.items.len < 2) {
-        try stdout.print("Usage: <expression>\n", .{});
-        return;
-    }
-
-    // expr parse
-    const expr = argsList.items[1];
+    // Analyze and calculate the equation
     const result = try evalExpr(expr);
     try stdout.print("Result: {d}\n", .{result});
+
+    // deallocation
+    std.heap.page_allocator.free(expr);
 }
 
 fn evalExpr(expr: []const u8) !i32 {
     var tokenizer = std.mem.tokenizeAny(u8, expr, " ");
     var sum: i32 = 0;
-    var expectingNumber = true; // first token should be a number
+    var expectingNumber = true; // first token is a number
 
     while (tokenizer.next()) |token| {
         if (expectingNumber) {
-            // add number to sum
+            // Add the values to the total
             const num = try std.fmt.parseInt(i32, token, 10);
             sum += num;
-            expectingNumber = false; // next should be an operator
+            expectingNumber = false; // Next should be the operator
         } else {
-            // check for operator
+            // check operator
             if (!std.mem.eql(u8, token, "+")) return error.InvalidOperator;
-            expectingNumber = true; // next should be a number
+            expectingNumber = true; // Next should be the numbers
         }
     }
 
